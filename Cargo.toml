@@ -1,0 +1,70 @@
+[package]
+name = "ars"
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.85"
+description = "URL library based on Web Standards"
+license = "MIT"
+repository = "https://github.com/ryuapp/ars"
+keywords = ["url", "parser"]
+categories = ["no-std"]
+include = [
+    "src/**/*",
+    "LICENSE",
+    "README.md",
+]
+
+[features]
+default = ["std"]
+std = [
+    "idna/std",
+    "percent-encoding/std",
+    "memchr/std",
+]
+
+[dependencies]
+idna = { version = "1.1", default-features = false, features = ["alloc", "compiled_data"] }
+percent-encoding = { version = "2.3", default-features = false, features = ["alloc"] }
+memchr = { version = "2.7", default-features = false }
+
+[dev-dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+criterion = "0.8"
+url = "2.5"
+ada-url = "3.4"
+
+[[bench]]
+name = "comparison_benchmarks"
+path = "benchmarks/comparison_benchmarks.rs"
+harness = false
+
+[lints.clippy]
+# Enable all lint groups (official recommendation)
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+
+# Panic prevention (deny in production code)
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+unwrap_in_result = "deny"
+
+# Debug artifacts (should be removed before release)
+dbg_macro = "deny"
+print_stdout = "warn"
+print_stderr = "warn"
+
+# Restriction lints (cherry-picked)
+exit = "deny"
+
+# Allow pedantic lints that are too noisy or not applicable
+must_use_candidate = "allow"
+too_many_lines = "allow"
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
