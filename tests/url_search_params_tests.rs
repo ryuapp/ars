@@ -337,3 +337,31 @@ fn test_equals_in_value() {
     let params = UrlSearchParams::parse("key=value=with=equals");
     assert_eq!(params.get("key"), Some("value=with=equals"));
 }
+
+#[test]
+fn test_to_string_vs_serialize() {
+    let mut params = UrlSearchParams::new();
+    
+    // Empty params
+    assert_eq!(params.to_string(), "");
+    assert_eq!(params.serialize(), "");
+    
+    // With parameters
+    params.append("foo", "bar");
+    params.append("baz", "qux");
+    
+    // to_string() returns without "?"
+    assert_eq!(params.to_string(), "foo=bar&baz=qux");
+    
+    // serialize() returns with "?"
+    assert_eq!(params.serialize(), "?foo=bar&baz=qux");
+}
+
+#[test]
+fn test_display_trait() {
+    let mut params = UrlSearchParams::new();
+    params.append("key", "value");
+    
+    // Display should use to_string() (no "?")
+    assert_eq!(format!("{}", params), "key=value");
+}

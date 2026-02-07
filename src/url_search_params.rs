@@ -110,6 +110,7 @@ impl UrlSearchParams {
     }
 
     /// Convert to query string with leading `?`, or empty string if no parameters.
+    /// WHATWG URL Standard behavior.
     pub fn serialize(&self) -> String {
         if self.params.is_empty() {
             return String::new();
@@ -125,6 +126,31 @@ impl UrlSearchParams {
             result.push_str(&encode_component(value));
         }
         result
+    }
+
+    /// Convert to query string without leading `?`.
+    /// JavaScript URLSearchParams.toString() compatible.
+    pub fn to_string(&self) -> String {
+        if self.params.is_empty() {
+            return String::new();
+        }
+
+        let mut result = String::new();
+        for (i, (key, value)) in self.params.iter().enumerate() {
+            if i > 0 {
+                result.push('&');
+            }
+            result.push_str(&encode_component(key));
+            result.push('=');
+            result.push_str(&encode_component(value));
+        }
+        result
+    }
+}
+
+impl core::fmt::Display for UrlSearchParams {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.to_string())
     }
 }
 
@@ -171,12 +197,6 @@ fn decode_component(s: &str) -> String {
     }
 
     String::from_utf8_lossy(&result).into_owned()
-}
-
-impl core::fmt::Display for UrlSearchParams {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.serialize())
-    }
 }
 
 impl From<&str> for UrlSearchParams {
