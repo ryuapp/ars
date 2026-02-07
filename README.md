@@ -5,7 +5,7 @@ This library is experimental; for production use, consider using [url](https://g
 
 ## Why not use `url`?
 
-[url](https://github.com/servo/rust-url) is a widely used Rust URL parsing library. However, this library does not pass 100% of Web Platform Tests. Additionally, creating JavaScript bindings for this Rust-native crate requires significant adaptation. ars is designed to address these limitations.
+[url](https://github.com/servo/rust-url) is a widely used Rust URL parsing library. However, this library does not pass 100% of Web Platform Tests. Additionally, creating JavaScript bindings for this Rust-native crate requires some adaptation. ars is designed to address these limitations.
 
 ## Why not use `ada-url`?
 
