@@ -22,7 +22,7 @@ fn main() {
     println!();
 
     // Delete a parameter
-    params.delete("city");
+    params.delete("city", None);
     println!("After delete: {}", params.serialize()); // name=John&age=31&country=Japan
     println!();
 
