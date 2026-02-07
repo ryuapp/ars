@@ -129,7 +129,8 @@ impl UrlSearchParams {
     }
 
     /// Convert to query string without leading `?`.
-    /// JavaScript URLSearchParams.toString() compatible.
+    /// JavaScript `URLSearchParams.toString()` compatible.
+    #[allow(clippy::inherent_to_string_shadow_display)]
     pub fn to_string(&self) -> String {
         if self.params.is_empty() {
             return String::new();
