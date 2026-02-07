@@ -69,7 +69,7 @@ fn test_append() {
 #[test]
 fn test_delete() {
     let mut params = UrlSearchParams::parse("key1=value1&key2=value2&key1=value3");
-    params.delete("key1");
+    params.delete("key1", None);
     assert_eq!(params.size(), 1);
     assert_eq!(params.get("key1"), None);
     assert_eq!(params.get("key2"), Some("value2"));
@@ -94,9 +94,9 @@ fn test_set_new_key() {
 #[test]
 fn test_has() {
     let params = UrlSearchParams::parse("key1=value1&key2=value2");
-    assert!(params.has("key1"));
-    assert!(params.has("key2"));
-    assert!(!params.has("key3"));
+    assert!(params.has("key1", None));
+    assert!(params.has("key2", None));
+    assert!(!params.has("key3", None));
 }
 
 #[test]
@@ -198,7 +198,7 @@ fn test_serialize_ampersand() {
 fn test_remove_by_key_value() {
     // Test removing specific key-value pair (if supported)
     let mut params = UrlSearchParams::parse("key=value1&key=value2&other=data");
-    params.delete("key");
+    params.delete("key", None);
     assert_eq!(params.get("key"), None);
     assert_eq!(params.get("other"), Some("data"));
 }
@@ -295,8 +295,8 @@ fn test_constructor_edge_cases() {
 #[test]
 fn test_has_with_value() {
     let params = UrlSearchParams::parse("key=value1&key=value2");
-    assert!(params.has("key"));
-    assert!(!params.has("nonexistent"));
+    assert!(params.has("key", None));
+    assert!(!params.has("nonexistent", None));
 }
 
 #[test]
@@ -364,4 +364,21 @@ fn test_display_trait() {
 
     // Display should use to_string() (no "?")
     assert_eq!(format!("{}", params), "key=value");
+}
+
+#[test]
+fn test_delete_with_value() {
+    let mut params = UrlSearchParams::parse("key=value1&key=value2&key=value3&other=data");
+
+    // Delete specific value
+    params.delete("key", Some("value2"));
+
+    // Should only delete the one with value2
+    assert_eq!(params.size(), 3);
+    let values = params.get_all("key");
+    assert_eq!(values.len(), 2);
+    assert!(values.contains(&"value1"));
+    assert!(!values.contains(&"value2"));
+    assert!(values.contains(&"value3"));
+    assert_eq!(params.get("other"), Some("data"));
 }

@@ -36,9 +36,19 @@ impl UrlSearchParams {
         self.params.push((key.to_string(), value.to_string()));
     }
 
-    /// Delete all pairs with the given key.
-    pub fn delete(&mut self, key: &str) {
-        self.params.retain(|(k, _)| k != key);
+    /// Delete pairs with the given key.
+    /// If `value` is provided, only deletes pairs matching both key and value.
+    /// Otherwise, deletes all pairs with the given key.
+    ///
+    /// WHATWG URL Standard: URLSearchParams.delete(name, value)
+    pub fn delete(&mut self, key: &str, value: Option<&str>) {
+        if let Some(val) = value {
+            // Delete only specific key-value pairs
+            self.params.retain(|(k, v)| k != key || v != val);
+        } else {
+            // Delete all pairs with the given key
+            self.params.retain(|(k, _)| k != key);
+        }
     }
 
     /// Get the first value for a key.
@@ -59,8 +69,18 @@ impl UrlSearchParams {
     }
 
     /// Check if a key exists.
-    pub fn has(&self, key: &str) -> bool {
-        self.params.iter().any(|(k, _)| k == key)
+    /// If `value` is provided, checks for a specific key-value pair.
+    /// Otherwise, checks if the key exists at all.
+    ///
+    /// WHATWG URL Standard: URLSearchParams.has(name, value)
+    pub fn has(&self, key: &str, value: Option<&str>) -> bool {
+        if let Some(val) = value {
+            // Check for specific key-value pair
+            self.params.iter().any(|(k, v)| k == key && v == val)
+        } else {
+            // Check if key exists
+            self.params.iter().any(|(k, _)| k == key)
+        }
     }
 
     /// Set a key to a single value, replacing all existing values for that key.
@@ -279,7 +299,7 @@ mod tests {
     #[test]
     fn test_delete() {
         let mut params = UrlSearchParams::parse("key1=value1&key2=value2&key1=value3");
-        params.delete("key1");
+        params.delete("key1", None);
         assert_eq!(params.size(), 1);
         assert_eq!(params.get("key1"), None);
         assert_eq!(params.get("key2"), Some("value2"));
@@ -304,9 +324,9 @@ mod tests {
     #[test]
     fn test_has() {
         let params = UrlSearchParams::parse("key1=value1&key2=value2");
-        assert!(params.has("key1"));
-        assert!(params.has("key2"));
-        assert!(!params.has("key3"));
+        assert!(params.has("key1", None));
+        assert!(params.has("key2", None));
+        assert!(!params.has("key3", None));
     }
 
     #[test]
@@ -408,7 +428,7 @@ mod tests {
     fn test_remove_by_key_value() {
         // Test removing specific key-value pair (if supported)
         let mut params = UrlSearchParams::parse("key=value1&key=value2&other=data");
-        params.delete("key");
+        params.delete("key", None);
         assert_eq!(params.get("key"), None);
         assert_eq!(params.get("other"), Some("data"));
     }
@@ -505,8 +525,8 @@ mod tests {
     #[test]
     fn test_has_with_value() {
         let params = UrlSearchParams::parse("key=value1&key=value2");
-        assert!(params.has("key"));
-        assert!(!params.has("nonexistent"));
+        assert!(params.has("key", None));
+        assert!(!params.has("nonexistent", None));
     }
 
     #[test]
