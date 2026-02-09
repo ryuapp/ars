@@ -666,6 +666,30 @@ impl UrlBase for UrlAggregator {
             return false;
         }
 
+        // For non-special URLs without authority, if pathname starts with "//",
+        // insert "/." to prevent ambiguity (pathname would be interpreted as authority)
+        let has_authority =
+            self.components.host_start as usize > self.components.protocol_end as usize;
+
+        if !self.scheme_type.is_special() && !has_authority && pathname.starts_with("//") {
+            let host_end = self.components.host_end as usize;
+            let pathname_start = self.components.pathname_start as usize;
+
+            // Only insert if "/." doesn't already exist
+            if pathname_start != host_end + 2
+                || self.buffer.get(host_end..pathname_start) != Some("/.")
+            {
+                self.buffer.insert_str(host_end, "/.");
+                self.components.pathname_start += 2;
+                if self.components.search_start > 0 {
+                    self.components.search_start += 2;
+                }
+                if self.components.hash_start > 0 {
+                    self.components.hash_start += 2;
+                }
+            }
+        }
+
         let start = self.components.pathname_start;
         let end = self.pathname_end();
         self.replace_range(start, end, pathname);
@@ -1043,5 +1067,54 @@ mod tests {
 
         // Unicode domains
         assert!(UrlAggregator::can_parse("https://総務省.jp", None));
+    }
+
+    // Regression tests for pathname "/." insertion bug
+    // See: https://github.com/ada-url/ada/pull/1077
+    #[test]
+    fn test_set_pathname_with_query() {
+        let mut url = UrlAggregator::parse("foo:/?q", None).unwrap();
+        assert!(url.set_pathname("//bar"));
+        assert_eq!(url.pathname(), "//bar");
+        assert_eq!(url.search(), "?q");
+        assert!(url.href().contains("/.//bar"));
+    }
+
+    #[test]
+    fn test_set_pathname_with_hash() {
+        let mut url = UrlAggregator::parse("foo:/#h", None).unwrap();
+        assert!(url.set_pathname("//bar"));
+        assert_eq!(url.pathname(), "//bar");
+        assert_eq!(url.hash(), "#h");
+        assert!(url.href().contains("/.//bar"));
+    }
+
+    #[test]
+    fn test_set_pathname_with_query_and_hash() {
+        let mut url = UrlAggregator::parse("foo:/?q#h", None).unwrap();
+        assert!(url.set_pathname("//bar"));
+        assert_eq!(url.pathname(), "//bar");
+        assert_eq!(url.search(), "?q");
+        assert_eq!(url.hash(), "#h");
+        assert!(url.href().contains("/.//bar"));
+    }
+
+    #[test]
+    fn test_set_pathname_blob_scheme() {
+        let mut url = UrlAggregator::parse("blob:/?q", None).unwrap();
+        assert!(url.set_pathname("//p"));
+        assert_eq!(url.pathname(), "//p");
+        assert_eq!(url.search(), "?q");
+        assert!(url.href().contains("/.//p"));
+    }
+
+    #[test]
+    fn test_set_pathname_sequential_setters() {
+        let mut url = UrlAggregator::parse("foo:xyz", None).unwrap();
+        assert!(url.set_pathname("//x"));
+        url.set_search("abc");
+        assert_eq!(url.pathname(), "//x");
+        assert_eq!(url.search(), "?abc");
+        assert!(url.href().contains("/.//x"));
     }
 }
