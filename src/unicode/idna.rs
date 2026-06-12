@@ -48,7 +48,7 @@ pub fn domain_to_ascii(domain: &str) -> Result<String> {
     }
 
     // Slow path: Unicode, percent-encoded, or Punycode - use full IDNA processing
-    idna::domain_to_ascii(domain).map_err(|_| ParseError::IdnaError)
+    crate::idna::domain_to_ascii(domain).ok_or(ParseError::IdnaError)
 }
 
 #[cfg(test)]

@@ -11,6 +11,7 @@ mod character_sets;
 mod checkers;
 mod error;
 mod helpers;
+mod idna;
 mod ipv4;
 mod ipv6;
 mod parser;
