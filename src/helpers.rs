@@ -1,17 +1,62 @@
 use crate::character_sets::is_ascii_tab_or_newline;
 use crate::compat::Cow;
 
+#[inline]
+pub fn find_byte(byte: u8, input: &[u8]) -> Option<usize> {
+    #[cfg(feature = "std")]
+    {
+        memchr::memchr(byte, input)
+    }
+
+    #[cfg(not(feature = "std"))]
+    {
+        input.iter().position(|&candidate| candidate == byte)
+    }
+}
+
+#[inline]
+pub fn rfind_byte(byte: u8, input: &[u8]) -> Option<usize> {
+    #[cfg(feature = "std")]
+    {
+        memchr::memrchr(byte, input)
+    }
+
+    #[cfg(not(feature = "std"))]
+    {
+        input.iter().rposition(|&candidate| candidate == byte)
+    }
+}
+
+#[inline]
+pub fn find_byte3(a: u8, b: u8, c: u8, input: &[u8]) -> Option<usize> {
+    #[cfg(feature = "std")]
+    {
+        memchr::memchr3(a, b, c, input)
+    }
+
+    #[cfg(not(feature = "std"))]
+    {
+        input
+            .iter()
+            .position(|&candidate| candidate == a || candidate == b || candidate == c)
+    }
+}
+
+#[inline]
+pub fn contains_byte3(a: u8, b: u8, c: u8, input: &[u8]) -> bool {
+    find_byte3(a, b, c, input).is_some()
+}
+
 /// Fast check if string contains tabs or newlines
 pub fn has_tabs_or_newline(input: &str) -> bool {
-    memchr::memchr3(b'\t', b'\n', b'\r', input.as_bytes()).is_some()
+    contains_byte3(b'\t', b'\n', b'\r', input.as_bytes())
 }
 
 /// Prune fragment (#hash) from URL string
 /// Returns (`url_without_fragment`, `fragment_without_hash`)
 /// Fragment is returned WITHOUT the leading '#' (matches ada-url)
-/// Optimization: Uses SIMD-accelerated memchr for fast '#' search
 pub fn prune_fragment(input: &str) -> (&str, Option<&str>) {
-    memchr::memchr(b'#', input.as_bytes()).map_or((input, None), |pos| {
+    find_byte(b'#', input.as_bytes()).map_or((input, None), |pos| {
         (&input[..pos], Some(&input[pos + 1..]))
     })
 }

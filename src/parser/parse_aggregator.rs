@@ -4,6 +4,7 @@ use crate::compat::{Cow, String, ToString, Vec};
 /// High-performance parser with single-buffer allocation (ada-url architecture)
 /// Writes directly to buffer with offset tracking - eliminates multiple String allocations
 use crate::error::{ParseError, Result};
+use crate::helpers::{find_byte, find_byte3, rfind_byte};
 use crate::ipv6::{parse_ipv6, serialize_ipv6};
 use crate::scheme::get_scheme_type;
 use crate::types::SchemeType;
@@ -502,7 +503,7 @@ pub fn parse_url_aggregator(input: &str, base_url: Option<&str>) -> Result<UrlAg
                     // Shorten path - find last '/' and truncate there
                     let pathname_start = components.pathname_start as usize;
                     if let Some(last_slash) =
-                        memchr::memrchr(b'/', &buffer.as_bytes()[pathname_start..buffer.len()])
+                        rfind_byte(b'/', &buffer.as_bytes()[pathname_start..buffer.len()])
                     {
                         buffer.truncate(pathname_start + last_slash);
                     }
@@ -607,7 +608,6 @@ pub fn parse_url_aggregator(input: &str, base_url: Option<&str>) -> Result<UrlAg
             }
 
             State::Authority => {
-                // Parse authority: use memchr for faster scanning
                 let mut auth_start = pointer;
 
                 // For special schemes, skip leading slashes/backslashes in authority (Tests #856-859)
@@ -634,13 +634,13 @@ pub fn parse_url_aggregator(input: &str, base_url: Option<&str>) -> Result<UrlAg
                     }
                     end
                 } else {
-                    memchr::memchr3(b'/', b'?', b'#', remaining).unwrap_or(remaining.len())
+                    find_byte3(b'/', b'?', b'#', remaining).unwrap_or(remaining.len())
                 };
                 let auth_end = auth_start + auth_len;
 
                 // Find LAST @ if present (for credentials) - WHATWG spec says use last @
                 let at_pos =
-                    memchr::memrchr(b'@', &bytes[auth_start..auth_end]).map(|pos| auth_start + pos);
+                    rfind_byte(b'@', &bytes[auth_start..auth_end]).map(|pos| auth_start + pos);
 
                 let authority = &input[auth_start..auth_end];
 
@@ -652,7 +652,7 @@ pub fn parse_url_aggregator(input: &str, base_url: Option<&str>) -> Result<UrlAg
 
                     if has_credentials {
                         // Find FIRST colon to split username/password
-                        if let Some(colon) = memchr::memchr(b':', credentials.as_bytes()) {
+                        if let Some(colon) = find_byte(b':', credentials.as_bytes()) {
                             let username = &credentials[0..colon];
                             let password = &credentials[colon + 1..]; // Everything after first colon
 
@@ -1091,7 +1091,7 @@ pub fn parse_url_aggregator(input: &str, base_url: Option<&str>) -> Result<UrlAg
                 // Slow path: need to process segments for dot resolution
                 loop {
                     // Find next slash
-                    let location = memchr::memchr(b'/', input.as_bytes());
+                    let location = find_byte(b'/', input.as_bytes());
                     let segment = if let Some(loc) = location {
                         let seg = &input[0..loc];
                         input = &input[loc + 1..];
@@ -1489,7 +1489,7 @@ fn parse_host_and_port(
     // Separate hostname and port
     let (hostname, port_str) = if host_and_port.starts_with('[') {
         // IPv6: [::1]:8080 or [::1]
-        if let Some(bracket_end) = memchr::memchr(b']', host_and_port.as_bytes()) {
+        if let Some(bracket_end) = find_byte(b']', host_and_port.as_bytes()) {
             let ipv6_part = &host_and_port[0..=bracket_end];
             let port_part = &host_and_port[bracket_end + 1..];
             if let Some(stripped) = port_part.strip_prefix(':') {
@@ -1502,7 +1502,7 @@ fn parse_host_and_port(
         }
     } else {
         // Regular host or IPv4
-        if let Some(colon_pos) = memchr::memrchr(b':', host_and_port.as_bytes()) {
+        if let Some(colon_pos) = rfind_byte(b':', host_and_port.as_bytes()) {
             (
                 &host_and_port[0..colon_pos],
                 Some(&host_and_port[colon_pos + 1..]),

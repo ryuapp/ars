@@ -1,5 +1,6 @@
 use crate::compat::String;
 use crate::error::{ParseError, Result};
+use crate::helpers::find_byte;
 
 /// Check if 4 bytes match "xn--" (case insensitive)
 fn is_punycode_prefix(slice: &[u8]) -> bool {
@@ -22,8 +23,16 @@ pub fn has_punycode(domain: &str) -> bool {
         return true;
     }
 
-    // Check for .xn-- patterns using memchr for faster scanning
-    memchr::memchr_iter(b'.', bytes).any(|pos| is_punycode_prefix(&bytes[pos + 1..]))
+    // Check for .xn-- patterns.
+    let mut offset = 0;
+    while let Some(pos) = find_byte(b'.', &bytes[offset..]) {
+        let dot = offset + pos;
+        if is_punycode_prefix(&bytes[dot + 1..]) {
+            return true;
+        }
+        offset = dot + 1;
+    }
+    false
 }
 
 /// Process a domain using IDNA `ToASCII` algorithm
@@ -48,7 +57,7 @@ pub fn domain_to_ascii(domain: &str) -> Result<String> {
     }
 
     // Slow path: Unicode, percent-encoded, or Punycode - use full IDNA processing
-    idna::domain_to_ascii(domain).map_err(|_| ParseError::IdnaError)
+    crate::idna::domain_to_ascii(domain).ok_or(ParseError::IdnaError)
 }
 
 #[cfg(test)]

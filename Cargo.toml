@@ -16,16 +16,10 @@ include = [
 
 [features]
 default = ["std"]
-std = [
-    "idna/std",
-    "percent-encoding/std",
-    "memchr/std",
-]
+std = ["memchr/std"]
 
 [dependencies]
-idna = { version = "1.1", default-features = false, features = ["alloc", "compiled_data"] }
-percent-encoding = { version = "2.3", default-features = false, features = ["alloc"] }
-memchr = { version = "2.7", default-features = false }
+memchr = { version = "2.7", default-features = false, optional = true }
 
 [dev-dependencies]
 serde = { version = "1.0", features = ["derive"] }
