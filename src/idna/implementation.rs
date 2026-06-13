@@ -8,7 +8,7 @@
     clippy::comparison_chain,
     clippy::many_single_char_names,
     clippy::similar_names,
-    clippy::unreadable_literal,
+    clippy::unreadable_literal
 )]
 
 #[cfg(not(feature = "std"))]
