@@ -343,83 +343,6 @@ fn py_adapt(mut d: i32, n: i32, first: bool) -> i32 {
     k + (PY_BASE - PY_TMIN + 1) * d / (d + PY_SKEW)
 }
 
-/// Decode punycode (the part after "xn--") into `out` (appends to existing).
-pub fn punycode_decode(input: &str, out: &mut Vec<u32>) -> bool {
-    // Per Ada: reject "xn--" prefix — caller strips it already
-    if input.starts_with("xn--") {
-        return false;
-    }
-    let bytes = input.as_bytes();
-    let mut written: i32 = 0;
-    let mut n: u32 = PY_INITIAL_N;
-    let mut i: i32 = 0;
-    let mut bias = PY_INITIAL_BIAS;
-
-    // ASCII prefix before the last '-'
-    let delim = bytes.iter().rposition(|&b| b == b'-');
-    let delta_start = if let Some(pos) = delim {
-        for &b in &bytes[..pos] {
-            if b >= 0x80 {
-                return false;
-            }
-            out.push(b as u32);
-            written += 1;
-        }
-        pos + 1
-    } else {
-        0
-    };
-
-    let mut cursor = delta_start;
-    while cursor < bytes.len() {
-        let old_i = i;
-        let mut w: i32 = 1;
-        let mut k = PY_BASE;
-        loop {
-            if cursor >= bytes.len() {
-                return false;
-            }
-            let digit = py_digit(bytes[cursor]);
-            cursor += 1;
-            if digit < 0 {
-                return false;
-            }
-            if digit > (0x7fff_ffff - i) / w {
-                return false;
-            }
-            i += digit * w;
-            let t = if k <= bias {
-                PY_TMIN
-            } else if k >= bias + PY_TMAX {
-                PY_TMAX
-            } else {
-                k - bias
-            };
-            if digit < t {
-                break;
-            }
-            if w > 0x7fff_ffff / (PY_BASE - t) {
-                return false;
-            }
-            w *= PY_BASE - t;
-            k += PY_BASE;
-        }
-        bias = py_adapt(i - old_i, written + 1, old_i == 0);
-        if i / (written + 1) > 0x7fff_ffff - n as i32 {
-            return false;
-        }
-        n = n.wrapping_add((i / (written + 1)) as u32);
-        i %= written + 1;
-        if n < 0x80 {
-            return false;
-        }
-        out.insert(i as usize, n);
-        written += 1;
-        i += 1;
-    }
-    true
-}
-
 /// Decode punycode into a caller-provided stack buffer — **zero heap allocation**.
 ///
 /// `out` must be at least 64 elements (DNS label max = 63 code points).
@@ -721,19 +644,21 @@ fn process_label(label_str: &str) -> Option<String> {
         if puny_part.is_empty() {
             return None; // "xn--" with no payload is invalid
         }
-        let mut decoded: Vec<u32> = Vec::new();
-        if !punycode_decode(puny_part, &mut decoded) {
+        let mut decoded_buf = [0u32; 64];
+        let mut decoded_len = 0usize;
+        if !punycode_decode_into(puny_part, &mut decoded_buf, &mut decoded_len) {
             return None; // punycode decode failure
         }
+        let decoded = &decoded_buf[..decoded_len];
         if decoded.iter().all(|&cp| cp < 0x80) {
             return None; // all-ASCII should not be punycode-encoded
         }
-        if !label_is_valid(&decoded) {
+        if !label_is_valid(decoded) {
             return None;
         }
         // Every decoded code point must have IDNA status = valid (1).
         // Ignored (0), disallowed (2), or mapped (≥3) → invalid label.
-        for &cp in &decoded {
+        for &cp in decoded {
             let idx = find_range_index(cp);
             let status = TABLE[idx][1] & 0xFF;
             if status != 1 {
@@ -741,7 +666,7 @@ fn process_label(label_str: &str) -> Option<String> {
             }
         }
         // Check Context-J rules and Bidi rules on the decoded label.
-        if !validate_context_and_bidi(&decoded) {
+        if !validate_context_and_bidi(decoded) {
             return None;
         }
         return Some(String::from(label_str)); // keep the xn-- form unchanged
