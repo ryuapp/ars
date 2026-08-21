@@ -37,7 +37,7 @@ pub(crate) fn find_range_index(key: u32) -> usize {
     let mut low: usize = 0;
     let mut high: usize = TABLE.len() - 1;
     while low <= high {
-        let mid = (low + high) >> 1;
+        let mid = usize::midpoint(low, high);
         let mv = TABLE[mid][0];
         if mv < key {
             low = mid + 1;
