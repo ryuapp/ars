@@ -446,10 +446,10 @@ mod tests {
 
         // All 'a' should come before 'z'
         let entries: Vec<(&str, &str)> = params.iter().collect();
-        assert!(entries[0].0 == "a");
-        assert!(entries[1].0 == "a");
-        assert!(entries[2].0 == "z");
-        assert!(entries[3].0 == "z");
+        assert_eq!(entries[0].0, "a");
+        assert_eq!(entries[1].0, "a");
+        assert_eq!(entries[2].0, "z");
+        assert_eq!(entries[3].0, "z");
     }
 
     #[test]
@@ -466,7 +466,7 @@ mod tests {
         let keys: Vec<&str> = params.iter().map(|(k, _)| k).collect();
         assert_eq!(keys.len(), 3);
         // Basic ASCII should come before extended characters
-        assert!(keys[0] == "a");
+        assert_eq!(keys[0], "a");
     }
 
     #[test]
